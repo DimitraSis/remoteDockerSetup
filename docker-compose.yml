@@ -6,34 +6,41 @@ services:
     image: "traefik:v2.10"
     container_name: "traefik"
     command:
-      - "--api.insecure=true" # enables the Traefik API. True by default
-      - "--providers.docker=true" # enables the Docker provider
-      - "--providers.docker.exposedbydefault=false" # prevents Traefik from creating routes for containers that don't have a traefik.enable=true label
+      #- "--log.level=DEBUG"
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
       - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
       - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
-      - "--certificatesresolvers.myresolver.acme.email=dimitra.sis7@gmail.com"# Email address used for registration
+      #- "--certificatesresolvers.myresolver.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory"
+      - "--certificatesresolvers.myresolver.acme.email=dimitra.sis7@gmail.com"
       - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
-    labels:
-      - "com.centurylinklabs.watchtower.enable=true"
     ports:
-      - "443:443" # sets the port for HTTP
-      - "8080:8080" # sets the port for HTTPS
+      - "443:443"
+      - "8080:8080"
+
     volumes:
-      - "./letsencrypt:/letsencrypt" # Copies the Let's Encrypt certificate locally for ease of backing up
+      - "./letsencrypt:/letsencrypt"
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
-    networks:
-      - backend
+
+  whoami:
+    image: "traefik/whoami"
+    container_name: "simple-service"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.whoami.rule=Host(`whoami.dimitrasiskou.dk`)"
+      - "traefik.http.routers.whoami.entrypoints=websecure"
+      - "traefik.http.routers.whoami.tls.certresolver=myresolver"
 
   europe:
-    image: "webtrade/europemap"
-    container_name: "europemap_container"
+    image: "webtrade/europemap:latest"
+    container_name: "europeapp"
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.europe.rule=Host(`europe.dimitrasiskou.dk`)"
       - "traefik.http.routers.europe.entrypoints=websecure"
       - "traefik.http.routers.europe.tls.certresolver=myresolver"
-      - "com.centurylinklabs.watchtower.enable=true"
-
-networks:
-  backend:
-    driver: bridge
+      - "com.centurylinklabs.watchtower.enable=false"
